@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -20,6 +21,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->dontReport(ReglaNegocioException::class);
+
+        $exceptions->render(function (ReglaNegocioException $exception): \Illuminate\Http\JsonResponse {
+            return response()->json([
+                'mensaje' => $exception->getMessage(),
+                'codigo' => 'REGLA_NEGOCIO',
+            ], 409);
+        });
 
         // ---------------------------------------------------------------
         // TODO [B5] Manejo centralizado de errores
