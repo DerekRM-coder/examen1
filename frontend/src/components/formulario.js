@@ -25,5 +25,62 @@ const $btnGuardar = document.querySelector("#btn-guardar");
  *     - Siempre (finally): rehabilite el botón y restaure su texto.
  */
 export const iniciarFormulario = ({ alGuardar }) => {
-  // TODO
+  const cargarCategorias = async () => {
+    try {
+      const respuesta = await listarCategorias();
+      $selectCategoria.querySelectorAll("option:not([value=''])").forEach(($option) => $option.remove());
+
+      for (const categoria of respuesta.data) {
+        const $option = document.createElement("option");
+        $option.value = categoria.id;
+        $option.textContent = categoria.nombre;
+        $selectCategoria.append($option);
+      }
+    } catch (error) {
+      mostrarMensaje("error", error.datos?.mensaje ?? error.datos?.message ?? "No fue posible cargar las categorías.");
+    }
+  };
+
+  const limpiarErrores = () => {
+    $form.querySelectorAll("[data-error]").forEach(($error) => ($error.textContent = ""));
+    $form.querySelectorAll("[aria-invalid]").forEach(($campo) => $campo.removeAttribute("aria-invalid"));
+  };
+
+  $form.addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    limpiarErrores();
+
+    const formulario = new FormData($form);
+    const datos = Object.fromEntries(formulario.entries());
+    datos.categoria_id = Number(datos.categoria_id);
+    datos.costo_interno = Number(datos.costo_interno);
+
+    const textoOriginal = $btnGuardar.textContent;
+    $btnGuardar.disabled = true;
+    $btnGuardar.textContent = "Guardando…";
+
+    try {
+      const respuesta = await crearEquipo(datos);
+      $form.reset();
+      mostrarMensaje("exito", `Equipo ${respuesta.data.codigo} registrado.`);
+      alGuardar();
+    } catch (error) {
+      if (error.status === 422) {
+        for (const [campo, mensajes] of Object.entries(error.datos.errors ?? {})) {
+          const $mensaje = $form.querySelector(`[data-error="${campo}"]`);
+          const $campo = $form.elements.namedItem(campo);
+
+          if ($mensaje) $mensaje.textContent = mensajes[0];
+          if ($campo) $campo.setAttribute("aria-invalid", "true");
+        }
+      } else {
+        mostrarMensaje("error", error.datos?.mensaje ?? error.datos?.message ?? "No fue posible registrar el equipo.");
+      }
+    } finally {
+      $btnGuardar.disabled = false;
+      $btnGuardar.textContent = textoOriginal;
+    }
+  });
+
+  cargarCategorias();
 };
